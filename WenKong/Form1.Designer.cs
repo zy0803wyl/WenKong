@@ -48,10 +48,9 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(15, 3);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(395, 48);
+            this.label1.Size = new System.Drawing.Size(347, 48);
             this.label1.TabIndex = 0;
-            this.label1.Text = "温控txt文档数据处理，按两种方式：\r\n\r\n1、按年：探头——>年份（探头号为文件名，年份为sheet）\r\n2、按月：探头——>年份——>月份（探头+年份为文件名" +
-    "，月份为sheet）";
+            this.label1.Text = "温控txt文档数据处理，按两种方式：\r\n\r\n1、按年：探头——>年份（年份+探头号为文件名）\r\n2、按月：探头——>年份——>月份（年份+月份+探头为文件名）";
             // 
             // label2
             // 

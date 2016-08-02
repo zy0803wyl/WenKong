@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -76,9 +77,14 @@ namespace WenKong
         private void Start()
         {
             SetState(false);
+            if (txt_Msg.Text.Length>0)
+            {
+                txt_Msg.Text = null;
+            }
             Thread th = new Thread(WriteFileToCsv);
             th.IsBackground = true;
             th.Start();
+            // Test();
         }
 
         private void WriteFileToCsv()
@@ -89,6 +95,7 @@ namespace WenKong
                 string temLine = null;
                 int count = 0;
                 int cishu = 0;
+                IData data = null;
                 SetMsg("开始写入数据。");
 
                 #region 写入数据循环
@@ -96,17 +103,17 @@ namespace WenKong
                 while ((temLine = sr.ReadLine()) != null)
                 {
                     count++;
-                    DataModel model = GetData(temLine);
-                    if (model.ID == "ID")
+                    data = DataFactory(temLine);
+                    //string line = string.Format("{0},{1},{2},{3},{4}", data.TYPE, data.ID, data.DATE, data.TIME, data.TEMP);
+                    string line = data.GetData(temLine);
+                    if (data.ID == "ID")
                     {
                         continue;
                     }
-                    string line = string.Format("{0},{1},{2},{3},{4}", model.TYPE, model.ID, model.DATE, model.TIME, model.TEMP);
-
                     if (rbtn_Year.Checked == true)
                     {
                         //按年：2015_No.01
-                        string fileName = model.DATE.Substring(0, 4) + "_" + model.ID;
+                        string fileName = data.DATE.Substring(0, 4) + "_" + data.ID;
                         if (!dataDic.Keys.Contains(fileName))
                         {
                             dataDic.Add(fileName, new StringBuilder(line).AppendLine());
@@ -119,7 +126,7 @@ namespace WenKong
                     else
                     {
                         //按月：201501_No.01
-                        string fileName = model.DATE.Substring(0, 6) + "_" + model.ID;
+                        string fileName = data.DATE.Substring(0, 6) + "_" + data.ID;
                         if (!dataDic.Keys.Contains(fileName))
                         {
                             dataDic.Add(fileName, new StringBuilder(line).AppendLine());
@@ -133,7 +140,6 @@ namespace WenKong
                     {
                         cishu++;
                         SetMsg("第 " + cishu.ToString() + " 次数据写入，请耐心等待");
-                        //SetMsgDelegate sm = new SetMsgDelegate(SetMsg);
                         //写入数据
 
                         #region 创建文件
@@ -141,14 +147,7 @@ namespace WenKong
                         foreach (string item in dataDic.Keys)
                         {
                             string fullPath = txt_To.Text + "\\" + item + ".csv";
-                            if (!File.Exists(fullPath))
-                            {
-                                //文件不存在
-                                using (StreamWriter sw = new StreamWriter(fullPath, true, Encoding.UTF8))
-                                {
-                                    sw.WriteLine("TYPE,ID,DATE,TIME,TEMP");
-                                }
-                            }
+                            CreatCsvFile(fullPath, data);
                         }
 
                         #endregion 创建文件
@@ -167,14 +166,7 @@ namespace WenKong
                     foreach (string item in dataDic.Keys)
                     {
                         string fullPath = txt_To.Text + "\\" + item + ".csv";
-                        if (!File.Exists(fullPath))
-                        {
-                            //文件不存在
-                            using (StreamWriter sw = new StreamWriter(fullPath, true, Encoding.UTF8))
-                            {
-                                sw.WriteLine("TYPE,ID,DATE,TIME,TEMP");
-                            }
-                        }
+                        CreatCsvFile(fullPath, data);
                     }
                     foreach (KeyValuePair<string, StringBuilder> item in dataDic)
                     {
@@ -192,6 +184,41 @@ namespace WenKong
             //修改开始按钮状态
             SetState(true);
             MessageBox.Show("数据拆分完成");
+        }
+
+        private IData DataFactory(string temLine)
+        {
+            string[] strs = temLine.Replace("\t\t", "\t").Split('\t');
+            if (strs.Length > 6)
+            {
+                return new DataModelForNew();
+            }
+            else
+            {
+                return new DataModelForOld();
+            }
+        }
+
+        private void CreatCsvFile(string fullPath, object data)
+        {
+            if (!File.Exists(fullPath))
+            {
+                //文件不存在
+                using (StreamWriter sw = new StreamWriter(fullPath, true, Encoding.UTF8))
+                {
+                    // sw.WriteLine("TYPE,ID,DATE,TIME,TEMP");
+                    PropertyInfo[] pros = data.GetType().GetProperties();
+                    StringBuilder str = new StringBuilder();
+                    foreach (PropertyInfo p in pros)
+                    {
+                        str.Append(p.Name + ",");
+                    }
+                    //移除多余的逗号
+                    str.Remove(str.Length - 1, 1);
+                    str.AppendLine();
+                    sw.Write(str.ToString());
+                }
+            }
         }
 
         private void WriteFile(object data)
@@ -266,44 +293,122 @@ namespace WenKong
             SetBtn_StratState(state);
         }
 
-        private DataModel GetData(string str)
+        private DataModelForOld GetData(string str)
         {
             //TYPE		ID		DATE		TIME		TEMP
             string[] datas = str.Replace("\t\t", "\t").Split('\t');
-            DataModel model = new DataModel()
+            DataModelForOld model = new DataModelForOld()
             {
-                TYPE = datas[0],
-                ID = datas[1],
-                DATE = datas[2],
-                TIME = datas[3],
-                TEMP = datas[4]
             };
             return model;
         }
+
+        private void Test()
+        {
+            string fileName = txt_Import.Text;
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+            {
+                using (StreamReader sr = new StreamReader(fs))
+                {
+                    string temLine = null;
+                    while ((temLine = sr.ReadLine()) != null)
+                    {
+                        temLine = temLine.Replace("\t\t", "\t");
+                    }
+                }
+            }
+        }
     }
 
-    internal class DataModel
+    internal class DataModelForOld : IData
     {
         //TYPE		ID		DATE		TIME		TEMP
         //CHECK		NO.02		20150319	14:18:30	-070.0буC
+
         public string TYPE { get; set; }
 
-        private string id;
-
-        public string ID
-        {
-            get { return id.Replace(".", "_"); }
-            set { id = value; }
-        }
+        public string ID { get; set; }
 
         public string DATE { get; set; }
-        public string TIME { get; set; }
-        private string temp;
 
-        public string TEMP
+        public string TIME { get; set; }
+
+        public string TEMP { get; set; }
+
+        public string GetData(string str)
         {
-            get { return temp.Substring(0, 6); }
-            set { temp = value; }
+            string[] datas = str.Replace("\t\t", "\t").Split('\t');
+            this.TYPE = datas[0];
+            this.ID = datas[1];
+            this.DATE = datas[2];
+            this.TIME = datas[3];
+            if (datas[4].Length >= 6)
+            {
+                this.TEMP = datas[4].Substring(0, 6);
+            }
+            else
+            {
+                this.TEMP = datas[4];
+            }
+            return string.Format("{0},{1},{2},{3},{4}", this.TYPE, this.ID, this.DATE, this.TIME, this.TEMP);
         }
+    }
+
+    internal class DataModelForNew : IData
+    {
+        //TYPE		ID		ADDRESS		DESCRIBE	DATE		TIME		TEMP
+        //Dopen		NO.003		01        	02        	20151223	17:24:54	-029.5буC
+
+        public string TYPE { get; set; }
+
+        public string ID { get; set; }
+
+        public string ADDRESS { get; set; }
+        public string DESCRIBE { get; set; }
+
+        public string DATE { get; set; }
+
+        public string TIME { get; set; }
+
+        public string TEMP { get; set; }
+
+        public string GetData(string str)
+        {
+            //TYPE		ID		ADDRESS		DESCRIBE	DATE		TIME		TEMP
+            string[] datas = str.Replace("\t\t", "\t").Split('\t');
+            this.TYPE = datas[0];
+            this.ID = datas[1];
+            this.ADDRESS = datas[2];
+            this.DESCRIBE = datas[3];
+            this.DATE = datas[4];
+            this.TIME = datas[5];
+            if (datas[6].Length>=6)
+            {
+                this.TEMP = datas[6].Substring(0, 7);
+            }
+            else
+            {
+                this.TEMP = datas[6];
+            }
+            return string.Format("{0},{1},{2},{3},{4},{5},{6}", this.TYPE, this.ID, this.ADDRESS, this.DESCRIBE, this.DATE,this.TIME,this.TEMP);
+        }
+    }
+
+    internal interface IData
+    {
+        //TYPE		ID		ADDRESS		DESCRIBE	DATE		TIME		TEMP
+        //Dopen		NO.003		01        	02        	20151223	17:24:54	-029.5буC
+        string TYPE { get; set; }
+
+        string ID { get; set; }
+
+        string DATE { get; set; }
+
+        string TIME { get; set; }
+
+        string TEMP { get; set; }
+
+        //获取数据方法
+        string GetData(string str);
     }
 }
