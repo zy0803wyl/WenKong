@@ -77,7 +77,7 @@ namespace WenKong
         private void Start()
         {
             SetState(false);
-            if (txt_Msg.Text.Length>0)
+            if (txt_Msg.Text.Length > 0)
             {
                 txt_Msg.Text = null;
             }
@@ -90,7 +90,7 @@ namespace WenKong
         private void WriteFileToCsv()
         {
             Dictionary<string, StringBuilder> dataDic = new Dictionary<string, StringBuilder>();
-            using (StreamReader sr = new StreamReader(txt_Import.Text))
+            using (StreamReader sr = new StreamReader(txt_Import.Text, Encoding.Default))
             {
                 string temLine = null;
                 int count = 0;
@@ -204,7 +204,7 @@ namespace WenKong
             if (!File.Exists(fullPath))
             {
                 //文件不存在
-                using (StreamWriter sw = new StreamWriter(fullPath, true, Encoding.UTF8))
+                using (StreamWriter sw = new StreamWriter(fullPath, true, Encoding.Default))
                 {
                     // sw.WriteLine("TYPE,ID,DATE,TIME,TEMP");
                     PropertyInfo[] pros = data.GetType().GetProperties();
@@ -228,7 +228,7 @@ namespace WenKong
             string fullPath = txt_To.Text + "\\" + dic.Key + ".csv";
             using (FileStream fs = new FileStream(fullPath, FileMode.Append, FileAccess.Write))
             {
-                using (StreamWriter sw = new StreamWriter(fs))
+                using (StreamWriter sw = new StreamWriter(fs, Encoding.Default))
                 {
                     sw.Write(dic.Value.ToString());
                 }
@@ -342,14 +342,7 @@ namespace WenKong
             this.ID = datas[1];
             this.DATE = datas[2];
             this.TIME = datas[3];
-            if (datas[4].Length >= 6)
-            {
-                this.TEMP = datas[4].Substring(0, 6);
-            }
-            else
-            {
-                this.TEMP = datas[4];
-            }
+            this.TEMP = datas[4];
             return string.Format("{0},{1},{2},{3},{4}", this.TYPE, this.ID, this.DATE, this.TIME, this.TEMP);
         }
     }
@@ -382,15 +375,8 @@ namespace WenKong
             this.DESCRIBE = datas[3];
             this.DATE = datas[4];
             this.TIME = datas[5];
-            if (datas[6].Length>=6)
-            {
-                this.TEMP = datas[6].Substring(0, 7);
-            }
-            else
-            {
-                this.TEMP = datas[6];
-            }
-            return string.Format("{0},{1},{2},{3},{4},{5},{6}", this.TYPE, this.ID, this.ADDRESS, this.DESCRIBE, this.DATE,this.TIME,this.TEMP);
+            this.TEMP = datas[6];
+            return string.Format("{0},{1},{2},{3},{4},{5},{6}", this.TYPE, this.ID, this.ADDRESS, this.DESCRIBE, this.DATE, this.TIME, this.TEMP);
         }
     }
 
